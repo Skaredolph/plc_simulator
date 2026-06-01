@@ -1,0 +1,53 @@
+2026-06-01 10:32:23,657 [INFO] operator: Operator Station starting
+2026-06-01 10:32:23,658 [INFO] mqtt.mqtt_client: Connecting to broker.emqx.io:1883...
+2026-06-01 10:32:24,846 [INFO] mqtt.mqtt_client: Connected to MQTT broker broker.emqx.io:1883
+2026-06-01 10:32:48,658 [INFO] operator: Received signal 2, shutting down...
+2026-06-01 10:32:49,314 [INFO] mqtt.mqtt_client: Disconnected from MQTT broker
+2026-06-01 10:32:49,314 [INFO] mqtt.mqtt_client: Disconnected from MQTT broker
+2026-06-01 10:32:58,699 [INFO] operator: Operator Station starting
+2026-06-01 10:32:58,699 [INFO] mqtt.mqtt_client: Connecting to broker.emqx.io:1883...
+2026-06-01 10:32:59,524 [INFO] mqtt.mqtt_client: Connected to MQTT broker broker.emqx.io:1883
+2026-06-01 10:33:25,752 [INFO] operator: Received signal 2, shutting down...
+2026-06-01 10:33:26,172 [INFO] mqtt.mqtt_client: Disconnected from MQTT broker
+2026-06-01 10:33:26,173 [INFO] mqtt.mqtt_client: Disconnected from MQTT broker
+2026-06-01 10:33:48,424 [INFO] operator: Operator Station starting
+2026-06-01 10:33:48,425 [INFO] mqtt.mqtt_client: Connecting to broker.emqx.io:1883...
+2026-06-01 10:33:49,158 [INFO] mqtt.mqtt_client: Connected to MQTT broker broker.emqx.io:1883
+2026-06-01 10:33:50,593 [INFO] plc: ============================================================
+2026-06-01 10:33:50,594 [INFO] plc: PLC Simulator starting
+2026-06-01 10:33:50,597 [INFO] plc: Broker: broker.emqx.io:1883
+2026-06-01 10:33:50,598 [INFO] plc: ============================================================
+2026-06-01 10:33:50,600 [INFO] patterns.factory: SensorFactory created TemperatureSensor for type='temperature'
+2026-06-01 10:33:50,601 [INFO] patterns.factory: SensorFactory created WaterLevelSensor for type='water_level'
+2026-06-01 10:33:50,601 [INFO] patterns.factory: SensorFactory created EnergyMeter for type='energy'
+2026-06-01 10:33:50,615 [INFO] devices.pump: Pump initialized in state: STOPPED
+2026-06-01 10:33:50,616 [INFO] mqtt.mqtt_client: Connecting to broker.emqx.io:1883...
+2026-06-01 10:33:50,987 [INFO] mqtt.mqtt_client: Connected to MQTT broker broker.emqx.io:1883
+2026-06-01 10:33:51,019 [INFO] plc: Starting PLC controller...
+2026-06-01 10:33:51,020 [INFO] plc: Telemetry loop started
+2026-06-01 10:33:51,021 [INFO] plc: PLC controller is running
+2026-06-01 10:34:06,580 [INFO] plc: Received START command from operator
+2026-06-01 10:34:06,581 [INFO] devices.pump: Pump state transition: STOPPED -> RUNNING
+2026-06-01 10:34:06,582 [INFO] plc: Pump state changed: STOPPED -> RUNNING
+2026-06-01 10:34:06,583 [INFO] devices.states: Pump started from StoppedState
+2026-06-01 10:34:21,307 [INFO] plc: Received STOP command from operator
+2026-06-01 10:34:21,308 [INFO] devices.pump: Pump state transition: RUNNING -> STOPPED
+2026-06-01 10:34:21,309 [INFO] plc: Pump state changed: RUNNING -> STOPPED
+2026-06-01 10:34:21,310 [INFO] devices.states: Pump stopped from RunningState
+2026-06-01 10:34:30,011 [INFO] plc: Received SET_LEVEL command: 45.0
+2026-06-01 10:34:30,012 [INFO] devices.sensors: Water level set to 45.0%
+2026-06-01 10:34:30,013 [INFO] devices.pump: Water level externally set to 45.0
+2026-06-01 10:34:37,869 [INFO] plc: Received START command from operator
+2026-06-01 10:34:37,870 [INFO] devices.pump: Pump state transition: STOPPED -> RUNNING
+2026-06-01 10:34:37,871 [INFO] plc: Pump state changed: STOPPED -> RUNNING
+2026-06-01 10:34:37,874 [INFO] devices.states: Pump started from StoppedState
+2026-06-01 10:35:31,154 [CRITICAL] devices.states: Overheat detected: 81.0°C
+2026-06-01 10:35:31,155 [INFO] devices.pump: Pump state transition: RUNNING -> ALARM
+2026-06-01 10:35:31,160 [INFO] plc: Pump state changed: RUNNING -> ALARM
+2026-06-01 10:35:31,161 [CRITICAL] devices.pump: ALARM published: {'code': 'OVERHEAT', 'temperature': 81.0}
+2026-06-01 10:35:31,163 [CRITICAL] plc: Alarm published: {
+  "code": "OVERHEAT",
+  "temperature": 81.0
+}
+2026-06-01 10:35:55,104 [INFO] plc: Received START command from operator
+2026-06-01 10:35:55,105 [ERROR] devices.states: Cannot start pump: alarm state is active (overheat)

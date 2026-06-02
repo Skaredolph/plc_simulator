@@ -16,11 +16,6 @@ logger = logging.getLogger(__name__)
 
 
 class Pump(Subject):
-    """Насос — контекст для паттерна State.
-
-    Управляет состоянием, датчиками и публикацией аварий.
-    """
-
     def __init__(
         self,
         temperature_sensor: TemperatureSensor,

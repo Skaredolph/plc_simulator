@@ -1,41 +1,31 @@
-"""
-Паттерн Factory Method (Фабричный метод)
-Создание датчиков через фабрику.
-"""
-from __future__ import annotations
-
+from enum import Enum, auto
 import logging
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from devices.sensors import EnergyMeter, TemperatureSensor, WaterLevelSensor
 
 logger = logging.getLogger(__name__)
 
 
+class SensorType(Enum):
+    TEMPERATURE = auto()
+    WATER_LEVEL = auto()
+    ENERGY = auto()
+
+    @classmethod
+    def from_string(cls, value: str):
+        try:
+            return cls[value.upper()]
+        
+        except KeyError:
+            available = ", ".join(x.name.lower() for x in cls)
+            raise ValueError(
+                f"Unknown sensor type: {value!r}. "
+                f"Available types: {available}"
+            )
+
+
 class SensorFactory:
-    """Фабрика для создания датчиков.
 
-    Поддерживаемые типы:
-        - temperature  -> TemperatureSensor
-        - water_level  -> WaterLevelSensor
-        - energy       -> EnergyMeter
-    """
-
-    @staticmethod
-    def create(sensor_type: str, **kwargs):
-        """Создать экземпляр датчика указанного типа.
-
-        Args:
-            sensor_type: Строковый идентификатор типа датчика.
-            **kwargs: Дополнительные аргументы для конструктора датчика.
-
-        Returns:
-            Экземпляр соответствующего датчика.
-
-        Raises:
-            ValueError: Если указан неизвестный тип датчика.
-        """
+    @classmethod
+    def _get_sensor_class(cls, sensor_type):
         from devices.sensors import (
             EnergyMeter,
             TemperatureSensor,
@@ -43,22 +33,25 @@ class SensorFactory:
         )
 
         mapping = {
-            "temperature": TemperatureSensor,
-            "water_level": WaterLevelSensor,
-            "energy": EnergyMeter,
+            SensorType.TEMPERATURE: TemperatureSensor,
+            SensorType.WATER_LEVEL: WaterLevelSensor,
+            SensorType.ENERGY: EnergyMeter,
         }
 
-        sensor_class = mapping.get(sensor_type)
-        if sensor_class is None:
-            available = ", ".join(mapping.keys())
-            raise ValueError(
-                f"Unknown sensor type: {sensor_type!r}. "
-                f"Available types: {available}"
-            )
+        return mapping[sensor_type]
 
-        instance = sensor_class(**kwargs)
+    @classmethod
+    def create(cls, sensor_type: str | SensorType, **kwargs):
+
+        if isinstance(sensor_type, str):
+            sensor_type = SensorType.from_string(sensor_type)
+
+        sensor_class = cls._get_sensor_class(sensor_type)
+
         logger.info(
-            f"SensorFactory created {sensor_class.__name__} "
-            f"for type={sensor_type!r}"
+            "Created %s for %s",
+            sensor_class.__name__,
+            sensor_type.name,
         )
-        return instance
+
+        return sensor_class(**kwargs)

@@ -1,72 +1,103 @@
 """
 Паттерн Observer (Наблюдатель)
-Собственная система событий для уведомления подписчиков.
+Собственная система событий.
 """
+
 from __future__ import annotations
 
 import logging
-from abc import ABC, abstractmethod
+
+from abc import (
+    ABC,
+    abstractmethod,
+)
+
 from typing import Any
 
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger(
+    __name__
+)
 
 
 class Observer(ABC):
-    """Абстрактный наблюдатель."""
 
     @abstractmethod
-    def update(self, event_type: str, data: dict[str, Any]) -> None:
-        """Вызывается при получении уведомления от Subject.
-
-        Args:
-            event_type: Тип произошедшего события.
-            data: Данные, связанные с событием.
-        """
+    def update(
+        self,
+        event_type: str,
+        data: dict[str, Any],
+    ) -> None:
         ...
 
 
-class Subject(ABC):
-    """Абстрактный субъект наблюдения."""
+class Subject:
 
-    def __init__(self) -> None:
-        self._observers: list[Observer] = []
+    def __init__(
+        self,
+    ) -> None:
 
-    def subscribe(self, observer: Observer) -> None:
-        """Подписать наблюдателя на уведомления.
+        self._observers: list[
+            Observer
+        ] = []
 
-        Args:
-            observer: Экземпляр наблюдателя.
-        """
+    def subscribe(
+        self,
+        observer: Observer,
+    ) -> None:
+
         if observer not in self._observers:
-            self._observers.append(observer)
-            logger.debug(f"Observer {observer.__class__.__name__} subscribed to {self.__class__.__name__}")
 
-    def unsubscribe(self, observer: Observer) -> None:
-        """Отписать наблюдателя от уведомлений.
+            self._observers.append(
+                observer
+            )
 
-        Args:
-            observer: Экземпляр наблюдателя.
-        """
-        if observer in self._observers:
-            self._observers.remove(observer)
-            logger.debug(f"Observer {observer.__class__.__name__} unsubscribed from {self.__class__.__name__}")
+            logger.debug(
+                "%s subscribed",
+                observer.__class__.__name__,
+            )
 
-    def notify(self, event_type: str, data: dict[str, Any]) -> None:
-        """Уведомить всех подписанных наблюдателей.
+    def unsubscribe(
+        self,
+        observer: Observer,
+    ) -> None:
 
-        Args:
-            event_type: Тип события.
-            data: Данные события.
-        """
+        try:
+
+            self._observers.remove(
+                observer
+            )
+
+        except ValueError:
+
+            pass
+
+    def notify(
+        self,
+        event_type: str,
+        data: dict[str, Any],
+    ) -> None:
+
         logger.debug(
-            f"Subject {self.__class__.__name__} notifying {len(self._observers)} "
-            f"observer(s) about event: {event_type}"
+            "Notify %d observers (%s)",
+            len(
+                self._observers
+            ),
+            event_type,
         )
-        for observer in self._observers:
+
+        for observer in self._observers.copy():
+
             try:
-                observer.update(event_type, data)
-            except Exception as exc:
-                logger.error(
-                    f"Error notifying observer {observer.__class__.__name__}: {exc}",
-                    exc_info=True,
+
+                observer.update(
+                    event_type,
+                    data,
+                )
+
+            except Exception:
+
+                logger.exception(
+                    "Observer failed: %s",
+                    observer.__class__.__name__,
                 )

@@ -2,6 +2,7 @@
 Паттерн State (Состояние)
 Реализация состояний для Pump.
 """
+
 from __future__ import annotations
 
 import logging
@@ -15,107 +16,141 @@ logger = logging.getLogger(__name__)
 
 
 class PumpState(ABC):
-    """Абстрактное состояние насоса."""
 
-    @property
+    name: str
+
     @abstractmethod
-    def name(self) -> str:
-        """Возвращает строковое имя состояния."""
+    def start(
+        self,
+        pump: Pump,
+    ) -> None:
         ...
 
     @abstractmethod
-    def start(self, pump: Pump) -> None:
-        """Обработать команду запуска.
-
-        Args:
-            pump: Ссылка на контекст-насос.
-        """
+    def stop(
+        self,
+        pump: Pump,
+    ) -> None:
         ...
 
     @abstractmethod
-    def stop(self, pump: Pump) -> None:
-        """Обработать команду остановки.
-
-        Args:
-            pump: Ссылка на контекст-насос.
-        """
-        ...
-
-    @abstractmethod
-    def update(self, pump: Pump) -> None:
-        """Выполнить логику обновления каждый цикл.
-
-        Args:
-            pump: Ссылка на контекст-насос.
-        """
+    def update(
+        self,
+        pump: Pump,
+    ) -> None:
         ...
 
 
 class StoppedState(PumpState):
-    """Состояние 'Остановлен'."""
 
-    @property
-    def name(self) -> str:
-        return "STOPPED"
+    name = "STOPPED"
 
-    def start(self, pump: Pump) -> None:
-        if pump.alarm_active:
-            logger.warning("Cannot start pump: alarm is active")
+    def start(
+        self,
+        pump: Pump,
+    ) -> None:
+
+        if pump.state_name == "ALARM":
+
+            logger.warning(
+                "Cannot start: alarm active"
+            )
+
             return
-        pump.transition_to(RunningState())
-        logger.info("Pump started from StoppedState")
 
-    def stop(self, pump: Pump) -> None:
-        logger.debug("Pump is already stopped")
+        pump.transition_to(
+            RunningState()
+        )
 
-    def update(self, pump: Pump) -> None:
-        # Когда насос выключен — температура плавно снижается
+    def stop(
+        self,
+        pump: Pump,
+    ) -> None:
+
+        pass
+
+    def update(
+        self,
+        pump: Pump,
+    ) -> None:
+
         pump.temperature_sensor.cool_down()
 
 
 class RunningState(PumpState):
-    """Состояние 'Работает'."""
 
-    @property
-    def name(self) -> str:
-        return "RUNNING"
+    name = "RUNNING"
 
-    def start(self, pump: Pump) -> None:
-        logger.debug("Pump is already running")
+    def start(
+        self,
+        pump: Pump,
+    ) -> None:
 
-    def stop(self, pump: Pump) -> None:
-        pump.transition_to(StoppedState())
-        logger.info("Pump stopped from RunningState")
+        pass
 
-    def update(self, pump: Pump) -> None:
-        # Когда насос включен — каждую секунду:
+    def stop(
+        self,
+        pump: Pump,
+    ) -> None:
+
+        pump.transition_to(
+            StoppedState()
+        )
+
+    def update(
+        self,
+        pump: Pump,
+    ) -> None:
+
         pump.temperature_sensor.increase()
+
         pump.energy_meter.accumulate()
+
         pump.water_level_sensor.decrease()
 
-        if pump.temperature_sensor.value > pump.overheat_threshold:
+        if (
+            pump.temperature_sensor.value
+            >
+            pump.overheat_threshold
+        ):
+
             logger.critical(
-                f"Overheat detected: {pump.temperature_sensor.value}°C"
+                "Overheat %.1f°C",
+                pump.temperature_sensor.value,
             )
-            pump.transition_to(AlarmState())
-            pump._publish_alarm()
+
+            pump.transition_to(
+                AlarmState()
+            )
+
+            pump.publish_alarm()
 
 
 class AlarmState(PumpState):
-    """Состояние 'Авария' (перегрев)."""
 
-    @property
-    def name(self) -> str:
-        return "ALARM"
+    name = "ALARM"
 
-    def start(self, pump: Pump) -> None:
-        logger.error("Cannot start pump: alarm state is active (overheat)")
+    def start(
+        self,
+        pump: Pump,
+    ) -> None:
 
-    def stop(self, pump: Pump) -> None:
-        pump.transition_to(StoppedState())
-        pump.alarm_active = False
-        logger.info("Alarm reset and pump stopped")
+        logger.error(
+            "Cannot start while alarm active"
+        )
 
-    def update(self, pump: Pump) -> None:
-        # В аварийном состоянии насос не работает — температура снижается
+    def stop(
+        self,
+        pump: Pump,
+    ) -> None:
+
+        pump.transition_to(
+            StoppedState()
+        )
+
+    def update(
+        self,
+        pump: Pump,
+    ) -> None:
+
         pump.temperature_sensor.cool_down()

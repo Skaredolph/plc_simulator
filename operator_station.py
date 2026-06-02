@@ -3,34 +3,53 @@ Operator Station — операторская панель управления 
 
 Подключается к MQTT, отображает телеметрию и позволяет отправлять команды.
 """
+
 from __future__ import annotations
 
-import json
 import logging
 import os
 import signal
 import sys
-import time
+
 from typing import Any
 
 from mqtt.mqtt_client import MqttClient
 
+
 # ---------------------------------------------------------------------------
-# Настройка логирования
+# Логирование
 # ---------------------------------------------------------------------------
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-LOGS_DIR = os.path.join(SCRIPT_DIR, "logs")
-os.makedirs(LOGS_DIR, exist_ok=True)
-LOG_FILE = os.path.join(LOGS_DIR, "plc.log")
+SCRIPT_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
+
+LOGS_DIR = os.path.join(
+    SCRIPT_DIR,
+    "logs",
+)
+
+os.makedirs(
+    LOGS_DIR,
+    exist_ok=True,
+)
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
+        logging.FileHandler(
+            os.path.join(
+                LOGS_DIR,
+                "plc.log",
+            ),
+            encoding="utf-8",
+        )
     ],
 )
-logger = logging.getLogger("operator")
+
+logger = logging.getLogger(
+    "operator"
+)
+
 
 # ---------------------------------------------------------------------------
 # MQTT топики
@@ -38,8 +57,10 @@ logger = logging.getLogger("operator")
 TOPIC_CMD_START = "plant/command/start"
 TOPIC_CMD_STOP = "plant/command/stop"
 TOPIC_CMD_SET_LEVEL = "plant/command/set_level"
+
 TOPIC_TELEMETRY = "plant/telemetry"
 TOPIC_ALARM = "plant/alarm"
+
 
 # QoS
 QOS_COMMANDS = 1
@@ -48,188 +69,381 @@ QOS_ALARM = 2
 
 
 class OperatorStation:
-    """Операторская станция."""
 
-    def __init__(self, mqtt_client: MqttClient) -> None:
-        self.mqtt = mqtt_client
-        self._running = False
-        self._last_telemetry: dict[str, Any] | None = None
-        self._alarm_history: list[dict[str, Any]] = []
+    def __init__(
+        self,
+        mqtt: MqttClient,
+    ) -> None:
 
-        self._register_mqtt_handlers()
+        self.mqtt = mqtt
 
-    def _register_mqtt_handlers(self) -> None:
-        """Подписаться на телеметрию и аварии."""
-        self.mqtt.subscribe(TOPIC_TELEMETRY, self._on_telemetry, qos=QOS_TELEMETRY)
-        self.mqtt.subscribe(TOPIC_ALARM, self._on_alarm, qos=QOS_ALARM)
+        self.telemetry: dict[
+            str,
+            Any,
+        ] | None = None
 
-    def _on_telemetry(self, topic: str, payload: dict) -> None:
-        """Обработать сообщение телеметрии."""
-        self._last_telemetry = payload
+        self.alarms: list[
+            dict[str, Any]
+        ] = []
 
-    def _on_alarm(self, topic: str, payload: dict) -> None:
-        """Обработать аварийное сообщение."""
-        self._alarm_history.append(payload)
-        print(f"\n[ALARM] Code: {payload.get('code')} | Temp: {payload.get('temperature')}°C")
-        print("> ", end="", flush=True)
+        self.mqtt.subscribe(
+            TOPIC_TELEMETRY,
+            self._on_telemetry,
+            qos=QOS_TELEMETRY,
+        )
 
-    def send_start(self) -> None:
-        """Отправить команду запуска насоса."""
+        self.mqtt.subscribe(
+            TOPIC_ALARM,
+            self._on_alarm,
+            qos=QOS_ALARM,
+        )
+
+    # -------------------------------------------------------------------
+    # MQTT callbacks
+    # -------------------------------------------------------------------
+
+    def _on_telemetry(
+        self,
+        _topic: str,
+        payload: dict,
+    ) -> None:
+
+        self.telemetry = payload
+
+    def _on_alarm(
+        self,
+        _topic: str,
+        payload: dict,
+    ) -> None:
+
+        self.alarms.append(
+            payload
+        )
+
+        print(
+            f"\n[ALARM] "
+            f"{payload.get('code')} | "
+            f"{payload.get('temperature')}°C"
+        )
+
+    # -------------------------------------------------------------------
+    # MQTT publish
+    # -------------------------------------------------------------------
+
+    def _publish(
+        self,
+        topic: str,
+        payload: dict,
+    ) -> None:
+
         self.mqtt.publish(
+            topic,
+            payload,
+            qos=QOS_COMMANDS,
+        )
+
+    def send_start(
+        self,
+    ) -> None:
+
+        self._publish(
             TOPIC_CMD_START,
-            {"source": "operator"},
-            qos=QOS_COMMANDS,
+            {
+                "source":
+                    "operator"
+            },
         )
-        print("Pump started")
 
-    def send_stop(self) -> None:
-        """Отправить команду остановки насоса."""
-        self.mqtt.publish(
+        print(
+            "Pump started"
+        )
+
+    def send_stop(
+        self,
+    ) -> None:
+
+        self._publish(
             TOPIC_CMD_STOP,
-            {"source": "operator"},
-            qos=QOS_COMMANDS,
+            {
+                "source":
+                    "operator"
+            },
         )
-        print("Pump stopped")
 
-    def send_set_level(self, level: float) -> None:
-        """Отправить команду установки уровня воды.
+        print(
+            "Pump stopped"
+        )
 
-        Args:
-            level: Новый уровень воды (0-100).
-        """
-        self.mqtt.publish(
+    def set_level(
+        self,
+        level: float,
+    ) -> None:
+
+        self._publish(
             TOPIC_CMD_SET_LEVEL,
-            {"value": level},
-            qos=QOS_COMMANDS,
+            {
+                "value":
+                    level
+            },
         )
-        print(f"Level changed to {level}")
 
-    def display_telemetry(self) -> None:
-        """Вывести текущую телеметрию на экран."""
-        if self._last_telemetry is None:
-            print("No telemetry data yet...")
+        print(
+            f"Level: {level}"
+        )
+
+    # -------------------------------------------------------------------
+    # Display
+    # -------------------------------------------------------------------
+
+    def show_status(
+        self,
+    ) -> None:
+
+        if not self.telemetry:
+
+            print(
+                "No telemetry"
+            )
+
             return
 
-        state_icon = "ON" if self._last_telemetry.get("pump_state") else "OFF"
-        temp = self._last_telemetry.get("temperature", 0.0)
-        level = self._last_telemetry.get("water_level", 0.0)
-        energy = self._last_telemetry.get("energy", 0.0)
+        temp = self.telemetry.get(
+            "temperature",
+            0,
+        )
 
-        # Цветовая индикация температуры
-        temp_indicator = ""
+        indicator = ""
+
         if temp >= 80:
-            temp_indicator = " [CRITICAL]"
+
+            indicator = " [CRITICAL]"
+
         elif temp >= 60:
-            temp_indicator = " [WARNING]"
+
+            indicator = " [WARNING]"
 
         print("-" * 40)
-        print(f"  Pump:    {state_icon}")
-        print(f"  Temp:    {temp:.1f}°C{temp_indicator}")
-        print(f"  Level:   {level:.1f}%")
-        print(f"  Energy:  {energy:.2f} kWh")
+
+        print(
+            "Pump:",
+            "ON"
+            if self.telemetry.get(
+                "pump_state"
+            )
+            else "OFF",
+        )
+
+        print(
+            f"Temp: "
+            f"{temp:.1f}°C"
+            f"{indicator}"
+        )
+
+        print(
+            f"Level: "
+            f"{self.telemetry.get('water_level', 0):.1f}%"
+        )
+
+        print(
+            f"Energy: "
+            f"{self.telemetry.get('energy', 0):.2f} kWh"
+        )
+
         print("-" * 40)
 
-    def display_alarms(self) -> None:
-        """Вывести историю аварий."""
-        if not self._alarm_history:
-            print("No alarms recorded")
+    def show_alarms(
+        self,
+    ) -> None:
+
+        if not self.alarms:
+
+            print(
+                "No alarms"
+            )
+
             return
 
-        print("Alarm History:")
-        for idx, alarm in enumerate(self._alarm_history, 1):
-            print(f"  {idx}. Code: {alarm.get('code')} | Temp: {alarm.get('temperature')}°C")
+        for index, alarm in enumerate(
+            self.alarms,
+            start=1,
+        ):
 
-    def display_help(self) -> None:
-        """Вывести справку по командам."""
-        print("Available commands:")
-        print("  start              - Start the pump")
-        print("  stop               - Stop the pump")
-        print("  set_level <value>  - Set water level (0-100)")
-        print("  status             - Show current telemetry")
-        print("  alarms             - Show alarm history")
-        print("  help               - Show this help message")
-        print("  quit / exit        - Exit the operator station")
+            print(
+                f"{index}. "
+                f"{alarm.get('code')} | "
+                f"{alarm.get('temperature')}°C"
+            )
 
-    def run(self) -> None:
-        """Запустить интерактивный цикл операторской станции."""
-        self._running = True
+    @staticmethod
+    def show_help() -> None:
+
+        print(
+            "\nCommands:\n"
+            "  start\n"
+            "  stop\n"
+            "  set_level <0-100>\n"
+            "  status\n"
+            "  alarms\n"
+            "  help\n"
+            "  quit\n"
+        )
+
+    # -------------------------------------------------------------------
+    # Main loop
+    # -------------------------------------------------------------------
+
+    def run(
+        self,
+    ) -> None:
+
+        commands = {
+
+            "start":
+                self.send_start,
+
+            "stop":
+                self.send_stop,
+
+            "status":
+                self.show_status,
+
+            "alarms":
+                self.show_alarms,
+
+            "help":
+                self.show_help,
+        }
+
         print("=" * 50)
-        print("  Operator Station")
-        print("  Connected to broker.emqx.io:1883")
+        print("Operator Station")
         print("=" * 50)
-        print()
-        self.display_help()
-        print()
 
-        while self._running:
+        self.show_help()
+
+        while True:
+
             try:
-                user_input = input("> ").strip()
-            except (EOFError, KeyboardInterrupt):
-                print("\nShutting down...")
+
+                user_input = input(
+                    "> "
+                ).strip()
+
+            except (
+                EOFError,
+                KeyboardInterrupt,
+            ):
+
                 break
 
             if not user_input:
+
                 continue
 
-            parts = user_input.split()
-            command = parts[0].lower()
+            if user_input in (
+                "quit",
+                "exit",
+            ):
 
-            if command == "start":
-                self.send_start()
-            elif command == "stop":
-                self.send_stop()
-            elif command == "set_level":
-                if len(parts) < 2:
-                    print("Usage: set_level <value>")
-                    continue
-                try:
-                    level = float(parts[1])
-                    self.send_set_level(level)
-                except ValueError:
-                    print("Invalid level value. Must be a number.")
-            elif command == "status":
-                self.display_telemetry()
-            elif command == "alarms":
-                self.display_alarms()
-            elif command == "help":
-                self.display_help()
-            elif command in ("quit", "exit"):
-                print("Exiting...")
                 break
-            else:
-                print(f"Unknown command: {command}")
-                print("Type 'help' for available commands")
 
-        self._running = False
+            if user_input.startswith(
+                "set_level"
+            ):
+
+                parts = user_input.split()
+
+                if len(parts) < 2:
+
+                    print(
+                        "Usage: set_level <value>"
+                    )
+
+                    continue
+
+                try:
+
+                    self.set_level(
+                        float(
+                            parts[1]
+                        )
+                    )
+
+                except ValueError:
+
+                    print(
+                        "Invalid level"
+                    )
+
+                continue
+
+            action = commands.get(
+                user_input.lower()
+            )
+
+            if action:
+
+                action()
+
+            else:
+
+                print(
+                    "Unknown command"
+                )
+
+        print(
+            "Exiting..."
+        )
 
 
 def main() -> None:
-    logger.info("Operator Station starting")
 
-    mqtt_client = MqttClient(
-        broker="broker.emqx.io",
-        port=1883,
-        client_id="operator_station_main",
+    logger.info(
+        "Operator starting"
     )
 
-    station = OperatorStation(mqtt_client)
+    mqtt = MqttClient(
+        broker="broker.emqx.io",
+        port=1883,
+        client_id="operator_station",
+    )
 
-    def signal_handler(signum, frame):
-        logger.info(f"Received signal {signum}, shutting down...")
-        mqtt_client.disconnect()
+    station = OperatorStation(
+        mqtt
+    )
+
+    def shutdown(
+        *_,
+    ) -> None:
+
+        logger.info(
+            "Shutdown"
+        )
+
+        mqtt.disconnect()
+
         sys.exit(0)
 
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(
+        signal.SIGINT,
+        shutdown,
+    )
+
+    signal.signal(
+        signal.SIGTERM,
+        shutdown,
+    )
 
     try:
-        mqtt_client.connect()
+
+        mqtt.connect()
+
         station.run()
-    except Exception as exc:
-        logger.critical(f"Fatal error: {exc}", exc_info=True)
+
     finally:
-        mqtt_client.disconnect()
+
+        mqtt.disconnect()
 
 
 if __name__ == "__main__":
+
     main()

@@ -30,8 +30,6 @@ class BaseSensor(ABC):
         )
 
     def _change_value(self, delta: float) -> None:
-        """Изменить значение датчика."""
-
         self._value += delta
 
 

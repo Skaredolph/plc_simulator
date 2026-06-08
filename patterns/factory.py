@@ -1,5 +1,10 @@
 from enum import Enum, auto
 import logging
+from devices.sensors import (
+EnergyMeter,
+TemperatureSensor,
+WaterLevelSensor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +31,6 @@ class SensorFactory:
 
     @classmethod
     def _get_sensor_class(cls, sensor_type):
-        from devices.sensors import (
-            EnergyMeter,
-            TemperatureSensor,
-            WaterLevelSensor,
-        )
 
         mapping = {
             SensorType.TEMPERATURE: TemperatureSensor,

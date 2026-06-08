@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
+from devices.states import StoppedState
 
 from patterns.observer import Subject
 
@@ -35,7 +36,7 @@ class Pump(Subject):
 
         self.overheat_threshold = 80.0
 
-        from devices.states import StoppedState
+        
 
         self._state: PumpState = StoppedState()
 

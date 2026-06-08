@@ -1,8 +1,3 @@
-"""
-Паттерн Observer (Наблюдатель)
-Собственная система событий.
-"""
-
 from __future__ import annotations
 
 import logging
